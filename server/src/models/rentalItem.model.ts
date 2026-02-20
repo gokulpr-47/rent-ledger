@@ -3,10 +3,12 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IRentalItem extends Document {
   rental: mongoose.Types.ObjectId;
   product: mongoose.Types.ObjectId;
+  notes?: string;
   quantity: number;
   productName: string;
   pricePerDay: number;
-  days: number;
+  takenTime: Date;
+  returnedTime?: Date;
   total: number;
 }
 
@@ -21,6 +23,11 @@ const rentalItemSchema = new Schema<IRentalItem>(
       type: Schema.Types.ObjectId,
       ref: "Product",
       required: true,
+    },
+
+    notes: {
+      type: String,
+      default: null,
     },
 
     quantity: {
@@ -41,10 +48,13 @@ const rentalItemSchema = new Schema<IRentalItem>(
       min: 0,
     },
 
-    days: {
-      type: Number,
+    takenTime: {
+      type: Date,
       required: true,
-      min: 1,
+    },
+
+    returnedTime: {
+      type: Date,
     },
 
     total: {

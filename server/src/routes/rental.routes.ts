@@ -1,14 +1,20 @@
 import { Router } from "express";
-import { createRental } from "../controllers/rental.controller";
-import { getRentalDetails } from "../controllers/rental.controller";
-import { getOpenRentals } from "../controllers/rental.controller";
-import { getRentalsByCustomer } from "../controllers/rental.controller";
+import {
+  addItemsToOpenRental,
+  updateReturnedTime,
+  updateRentalItemPrice,
+  getCustomerRentalItems,
+  getAllCustomerRentals,
+  closeRental,
+} from "../controllers/rental.controller";
 
 const router = Router();
 
-router.post("/", createRental);
-router.get("/open/all", getOpenRentals);
-router.get("/:id", getRentalDetails);
-router.get("/customer/:customerId", getRentalsByCustomer);
+router.post("/", addItemsToOpenRental);
+router.patch("/item/:rentalItemId/return", updateReturnedTime);
+router.patch("/item/:rentalItemId/price", updateRentalItemPrice);
+router.get("/:customerId/rental-items", getCustomerRentalItems);
+router.get("/:customerId/rentals", getAllCustomerRentals);
+router.patch("/:rentalId/close", closeRental);
 
 export default router;
