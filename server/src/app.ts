@@ -7,6 +7,8 @@ import customerRoutes from "./routes/customer.routes";
 import paymentRoutes from "./routes/payment.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
 import productRoutes from "./routes/product.routes";
+import backupRoutes from "./routes/backup.routes";
+import googleRoutes from "./routes/google.routes";
 
 const app = express();
 
@@ -24,5 +26,7 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/google", googleRoutes);
+app.use("/api/backup", backupRoutes);
 
 export default app;
