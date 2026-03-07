@@ -28,6 +28,34 @@ export const saveTokens = async (code: string) => {
   return tokens;
 };
 
+export const getGoogleStatus = async (): Promise<boolean> => {
+  const tokenDoc = await GoogleToken.findOne();
+  return !!tokenDoc;
+};
+
+export const revokeTokens = async () => {
+  // remove stored tokens and revoke with Google if possible
+  const tokenDoc = await GoogleToken.findOne();
+  if (tokenDoc) {
+    const token = tokenDoc.toObject();
+    if (token.access_token) {
+      try {
+        await oauth2Client.revokeToken(token.access_token);
+      } catch (err) {
+        console.warn("Failed to revoke access token", err);
+      }
+    }
+    if (token.refresh_token) {
+      try {
+        await oauth2Client.revokeToken(token.refresh_token);
+      } catch (err) {
+        console.warn("Failed to revoke refresh token", err);
+      }
+    }
+  }
+  await GoogleToken.deleteMany({});
+};
+
 import { Credentials } from "google-auth-library";
 
 export const getDriveClient = async () => {
@@ -44,6 +72,17 @@ export const getDriveClient = async () => {
   };
 
   oauth2Client.setCredentials(credentials);
+
+  // Listen for refreshed tokens
+  oauth2Client.on("tokens", async (tokens) => {
+    if (tokens.refresh_token) {
+      await GoogleToken.updateOne({}, { refresh_token: tokens.refresh_token });
+    }
+
+    if (tokens.access_token) {
+      await GoogleToken.updateOne({}, tokens);
+    }
+  });
 
   return google.drive({ version: "v3", auth: oauth2Client });
 };

@@ -1,0 +1,32 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const cors_1 = __importDefault(require("cors"));
+const helmet_1 = __importDefault(require("helmet"));
+const morgan_1 = __importDefault(require("morgan"));
+const rental_routes_1 = __importDefault(require("./routes/rental.routes"));
+const customer_routes_1 = __importDefault(require("./routes/customer.routes"));
+const payment_routes_1 = __importDefault(require("./routes/payment.routes"));
+const dashboard_routes_1 = __importDefault(require("./routes/dashboard.routes"));
+const product_routes_1 = __importDefault(require("./routes/product.routes"));
+const backup_routes_1 = __importDefault(require("./routes/backup.routes"));
+const google_routes_1 = __importDefault(require("./routes/google.routes"));
+const app = (0, express_1.default)();
+app.use(express_1.default.json());
+app.use((0, cors_1.default)());
+app.use((0, helmet_1.default)());
+app.use((0, morgan_1.default)("dev"));
+app.get("/health", (_, res) => {
+    res.status(200).json({ status: "OK" });
+});
+app.use("/api/rentals", rental_routes_1.default);
+app.use("/api/customers", customer_routes_1.default);
+app.use("/api/payments", payment_routes_1.default);
+app.use("/api/dashboard", dashboard_routes_1.default);
+app.use("/api/products", product_routes_1.default);
+app.use("/api/google", google_routes_1.default);
+app.use("/api/backup", backup_routes_1.default);
+exports.default = app;

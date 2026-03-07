@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const rental_controller_1 = require("../controllers/rental.controller");
+const router = (0, express_1.Router)();
+router.post("/", rental_controller_1.addItemsToOpenRental);
+router.patch("/item/:rentalItemId/return", rental_controller_1.updateReturnedTime);
+router.patch("/item/:rentalItemId/price", rental_controller_1.updateRentalItemPrice);
+router.get("/:customerId/rental-items", rental_controller_1.getCustomerRentalItems);
+router.get("/:customerId/rentals", rental_controller_1.getAllCustomerRentals);
+router.patch("/:rentalId/close", rental_controller_1.closeRental);
+exports.default = router;

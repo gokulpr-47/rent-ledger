@@ -165,15 +165,15 @@ export const updateRentalItemPriceService = async (
   const item = await RentalItem.findById(rentalItemId);
   if (!item) throw new Error("Rental item not found");
 
-  item.pricePerDay = newPrice;
+  item.total = newPrice;
 
   // Optionally, recalc total if returnedTime exists
-  if (item.returnedTime) {
-    const duration =
-      (item.returnedTime.getTime() - item.takenTime.getTime()) /
-      (1000 * 60 * 60 * 24);
-    item.total = item.pricePerDay * item.quantity * Math.ceil(duration);
-  }
+  // if (item.returnedTime) {
+  //   const duration =
+  //     (item.returnedTime.getTime() - item.takenTime.getTime()) /
+  //     (1000 * 60 * 60 * 24);
+  //   item.total = item.pricePerDay * item.quantity * Math.ceil(duration);
+  // }
 
   await item.save();
   return item;

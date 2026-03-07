@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const google_controller_1 = require("../controllers/google.controller");
+const router = (0, express_1.Router)();
+router.get("/connect", google_controller_1.connectGoogle);
+router.get("/callback", google_controller_1.googleCallback);
+router.get("/status", google_controller_1.googleStatus);
+router.post("/disconnect", google_controller_1.googleDisconnect);
+exports.default = router;
