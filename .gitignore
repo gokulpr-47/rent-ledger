@@ -2,3 +2,5 @@
 /server/.env
 /server/backups
 /server/service-account.json
+
+/start.bat
