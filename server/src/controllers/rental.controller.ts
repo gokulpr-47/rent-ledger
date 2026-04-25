@@ -4,8 +4,10 @@ import {
   getCustomerRentalItemsService,
   updateReturnedTimeService,
   updateRentalItemPriceService,
+  deleteRentalItemService,
   getAllCustomerRentalsService,
   closeRentalService,
+  reopenRentalService,
 } from "../services/rental.services";
 
 export const addItemsToOpenRental = async (req: Request, res: Response) => {
@@ -85,6 +87,26 @@ export const updateRentalItemPrice = async (req: Request, res: Response) => {
   }
 };
 
+export const deleteRentalItem = async (req: Request, res: Response) => {
+  try {
+    const { rentalItemId } = req.params as { rentalItemId: string };
+
+    const result = await deleteRentalItemService(rentalItemId);
+
+    console.log("deleteRentalItem success", rentalItemId);
+    res.status(200).json({ success: true, data: result });
+  } catch (error: any) {
+    console.error("deleteRentalItem error", error.message);
+    const message = error.message || "Failed to delete rental item";
+    const status = message.includes("not found")
+      ? 404
+      : message.includes("Cannot delete item that has not been returned")
+        ? 400
+        : 500;
+    res.status(status).json({ success: false, message });
+  }
+};
+
 export const getCustomerRentalItems = async (req: Request, res: Response) => {
   try {
     const { customerId } = req.params as { customerId: string };
@@ -145,6 +167,31 @@ export const closeRental = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: error.message || "Failed to close rental",
+    });
+  }
+};
+
+export const reopenRental = async (req: Request, res: Response) => {
+  try {
+    const { rentalId } = req.params as { rentalId: string };
+
+    const rental = await reopenRentalService(rentalId);
+
+    res.status(200).json({
+      success: true,
+      message: "Rental reopened successfully",
+      data: rental,
+    });
+  } catch (error: any) {
+    const message = error.message || "Failed to reopen rental";
+    const status = message.includes("not found")
+      ? 404
+      : message.includes("Cannot reopen")
+      ? 400
+      : 500;
+    res.status(status).json({
+      success: false,
+      message,
     });
   }
 };

@@ -17,6 +17,7 @@ import AddPaymentModal from "./AddPaymentModal";
 import CloseRentalModal from "./CloseRentalModal";
 import {
   addItemsToRental,
+  deleteRentalItem,
   updateReturnedTime,
   updateRentalItemPrice,
   closeRental,
@@ -70,11 +71,15 @@ export default function OpenRentalPanel({
     }
   };
 
-  const handlePayment = async (amount: number) => {
+  const handlePayment = async (
+    amount: number,
+    isAdvance?: boolean,
+    notes?: string,
+  ) => {
     setActionLoading(true);
     setError("");
     try {
-      await addPayment({ rentalId: rental._id, amount });
+      await addPayment({ rentalId: rental._id, amount, isAdvance, notes });
       onRefresh();
       setPaymentOpen(false);
     } catch (err: any) {
@@ -99,13 +104,49 @@ export default function OpenRentalPanel({
   };
 
   const handleReturn = async (itemId: string, returnedTime: string) => {
-    await updateReturnedTime(itemId, returnedTime);
-    onRefresh();
+    setActionLoading(true);
+    setError("");
+    try {
+      await updateReturnedTime(itemId, returnedTime);
+      onRefresh();
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to update return time");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleEditPrice = async (itemId: string, price: number) => {
-    await updateRentalItemPrice(itemId, price);
-    onRefresh();
+    setActionLoading(true);
+    setError("");
+    try {
+      await updateRentalItemPrice(itemId, price);
+      onRefresh();
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to update price");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    setActionLoading(true);
+    setError("");
+
+    try {
+      await deleteRentalItem(itemId);
+      onRefresh();
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const message =
+        err?.response?.data?.message || err?.message || "Failed to delete item";
+      setError(
+        `Failed to delete item${status ? ` (status ${status})` : ""}: ${message}`,
+      );
+      console.error("deleteRentalItem failed", itemId, status, message, err);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   return (
@@ -192,6 +233,7 @@ export default function OpenRentalPanel({
             items={items}
             onReturn={handleReturn}
             onEditPrice={handleEditPrice}
+            onDelete={handleDeleteItem}
           />
 
           <Divider />
@@ -212,7 +254,7 @@ export default function OpenRentalPanel({
                   Total
                 </Typography>
                 <Typography variant="h6" fontWeight={700}>
-                  ₹{rental.finalAmount.toLocaleString("en-IN")}
+                  ₹{rental.totalAmount.toLocaleString("en-IN")}
                 </Typography>
               </div>
               <div>
@@ -228,7 +270,7 @@ export default function OpenRentalPanel({
                   Paid
                 </Typography>
                 <Typography variant="h6" fontWeight={700} color="success.main">
-                  ₹{totalPaid.toLocaleString("en-IN")}
+                  ₹{(totalPaid ?? 0).toLocaleString("en-IN")}
                 </Typography>
               </div>
               <div>
@@ -246,9 +288,15 @@ export default function OpenRentalPanel({
                 <Typography
                   variant="h6"
                   fontWeight={700}
-                  color={remainingBalance > 0 ? "error.main" : "success.main"}
+                  color={
+                    remainingBalance > 0
+                      ? "error.main"
+                      : remainingBalance < 0
+                        ? "success.main"
+                        : "text.primary"
+                  }
                 >
-                  ₹{remainingBalance.toLocaleString("en-IN")}
+                  ₹{Math.abs(remainingBalance ?? 0).toLocaleString("en-IN")}
                 </Typography>
               </div>
               {rental.discount > 0 && (
@@ -284,16 +332,36 @@ export default function OpenRentalPanel({
                 >
                   Payments ({data.payments.length})
                 </Typography>
-                {data.payments.map((p) => (
-                  <Typography
-                    key={p._id}
-                    variant="caption"
-                    color="text.secondary"
-                  >
-                    ₹{p.amount.toLocaleString("en-IN")} ·{" "}
-                    {new Date(p.createdAt).toLocaleDateString("en-IN")}
-                  </Typography>
-                ))}
+
+                <div
+                  style={{
+                    width: "100%",
+                    maxHeight: 220,
+                    overflowY: "auto",
+                    paddingRight: 8,
+                  }}
+                >
+                  {data.payments.map((p) => (
+                    <Typography
+                      key={p._id}
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block" }}
+                    >
+                      ₹{p.amount.toLocaleString("en-IN")} ·
+                      {new Date(p.createdAt).toLocaleString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: true,
+                      })}
+                      {p.isAdvance ? " · advance" : ""}
+                      {p.notes ? ` · ${p.notes}` : ""}
+                    </Typography>
+                  ))}
+                </div>
               </Stack>
             )}
           </div>

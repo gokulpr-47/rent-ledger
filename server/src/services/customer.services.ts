@@ -3,8 +3,21 @@ import { Rental } from "../models/rental.model";
 import { Payment } from "../models/payment.model";
 import mongoose from "mongoose";
 
+const normalizeCustomerPhone = (data: any) => {
+  if (typeof data.phone === "string") {
+    const trimmed = data.phone.trim();
+    if (trimmed === "") {
+      delete data.phone;
+    } else {
+      data.phone = trimmed;
+    }
+  }
+  return data;
+};
+
 export const createCustomerService = async (data: any) => {
-  return await Customer.create(data);
+  const normalizedData = normalizeCustomerPhone({ ...data });
+  return await Customer.create(normalizedData);
 };
 
 export const getCustomersService = async (
@@ -63,7 +76,9 @@ export const getCustomersService = async (
 };
 
 export const updateCustomerService = async (id: string, data: any) => {
-  const customer = await Customer.findByIdAndUpdate(id, data, {
+  const normalizedData = normalizeCustomerPhone({ ...data });
+
+  const customer = await Customer.findByIdAndUpdate(id, normalizedData, {
     new: true,
   });
 
@@ -75,6 +90,12 @@ export const updateCustomerService = async (id: string, data: any) => {
 };
 
 export const deleteCustomerService = async (id: string) => {
+  // Prevent deleting a customer who has any rentals (open or closed)
+  const existingRental = await Rental.findOne({ customer: id });
+  if (existingRental) {
+    throw new Error("Cannot delete customer who has rental records");
+  }
+
   const customer = await Customer.findByIdAndDelete(id);
 
   if (!customer) {

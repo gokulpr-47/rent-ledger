@@ -1,5 +1,5 @@
-import api from '../axios';
-import { Product, PaginatedResponse } from '../types';
+import api from "../axios";
+import { Product, PaginatedResponse } from "../types";
 
 export interface GetProductsParams {
   page?: number;
@@ -9,27 +9,27 @@ export interface GetProductsParams {
 }
 
 export const getProducts = async (
-  params: GetProductsParams = {}
+  params: GetProductsParams = {},
 ): Promise<PaginatedResponse<Product>> => {
-  const res = await api.get('/products', { params });
+  const res = await api.get("/products", { params });
   return res.data;
 };
 
 export const getAllProducts = async (): Promise<Product[]> => {
-  const res = await api.get('/products', { params: { limit: 100 } });
+  const res = await api.get("/products", { params: { limit: 1000 } });
   return res.data.data;
 };
 
 export const createProduct = async (
-  data: Omit<Product, '_id' | 'createdAt' | 'updatedAt'>
+  data: Omit<Product, "_id" | "createdAt" | "updatedAt">,
 ): Promise<Product> => {
-  const res = await api.post('/products', data);
+  const res = await api.post("/products", data);
   return res.data.data;
 };
 
 export const updateProduct = async (
   id: string,
-  data: Partial<Omit<Product, '_id' | 'createdAt' | 'updatedAt'>>
+  data: Partial<Omit<Product, "_id" | "createdAt" | "updatedAt">>,
 ): Promise<Product> => {
   const res = await api.put(`/products/${id}`, data);
   return res.data.data;

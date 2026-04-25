@@ -13,26 +13,37 @@ import Button from "@mui/material/Button";
 import TopBar from "@/components/layout/TopBar";
 import OpenRentalPanel from "@/components/ledger/OpenRentalPanel";
 import ClosedRentalsHistory from "@/components/ledger/ClosedRentalsHistory";
-import { getAllCustomers } from "@/lib/api/customers";
+import { getCustomers } from "@/lib/api/customers";
 import { getAllProducts } from "@/lib/api/products";
 import {
   getCustomerOpenRental,
   getAllCustomerRentals,
+  reopenRental,
 } from "@/lib/api/rentals";
 import { Customer, CustomerRentalData } from "@/lib/types";
 import { BookOpen } from "lucide-react";
 import AddItemsModal from "@/components/ledger/AddItemsModal";
 import { addItemsToRental } from "@/lib/api/rentals";
+import { useDebounce } from "@/lib/hooks/useDebounce";
 
 export default function LedgerPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null,
   );
+  const [searchCustomer, setSearchCustomer] = useState("");
+  const debouncedSearchCustomer = useDebounce(searchCustomer, 400);
 
-  const { data: customers = [], isLoading: customersLoading } = useSWR(
-    "all-customers",
-    getAllCustomers,
+  const { data: customersData, isLoading: customersLoading } = useSWR(
+    ["customers", debouncedSearchCustomer],
+    () =>
+      getCustomers({
+        page: 1,
+        limit: 100,
+        search: debouncedSearchCustomer,
+      }).then((res) => res.data),
   );
+
+  const customers: Customer[] = customersData || [];
 
   const { data: products = [] } = useSWR("all-products", getAllProducts);
 
@@ -90,6 +101,19 @@ export default function LedgerPage() {
     }
   };
 
+  const handleReopenRental = async (rentalId: string) => {
+    setActionLoading(true);
+    setPageError("");
+    try {
+      await reopenRental(rentalId);
+      handleRefresh();
+    } catch (err: any) {
+      setPageError(err.response?.data?.message || "Failed to reopen rental");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const closedRentals: CustomerRentalData[] = allRentals.filter(
     (r) => r.rental.status === "CLOSED",
   );
@@ -106,9 +130,14 @@ export default function LedgerPage() {
           <Autocomplete
             options={customers}
             loading={customersLoading}
-            getOptionLabel={(c) => `${c.name} — ${c.phone}`}
+            getOptionLabel={(c) =>
+              c.phone ? `${c.name} — ${c.phone}` : c.name
+            }
             value={selectedCustomer}
             onChange={(_, val) => setSelectedCustomer(val)}
+            onInputChange={(_, value) => {
+              setSearchCustomer(value);
+            }}
             renderInput={(params) => (
               <TextField
                 {...params}
@@ -209,7 +238,7 @@ export default function LedgerPage() {
                         {closedRentals.length !== 1 ? "s" : ""}
                       </Typography>
                     </Typography>
-                    <ClosedRentalsHistory rentals={closedRentals} />
+                    <ClosedRentalsHistory rentals={closedRentals} onReopen={handleReopenRental} />
                   </div>
                 </>
               )}

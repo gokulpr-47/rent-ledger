@@ -61,7 +61,9 @@ export const deleteCustomer = async (req: Request, res: Response) => {
     await deleteCustomerService(req.params.id as string);
     res.json({ success: true, message: "Customer deleted" });
   } catch (error: any) {
-    res.status(404).json({ success: false, message: error.message });
+    const message = error.message || "Failed to delete customer";
+    const status = message.includes("rental records") ? 400 : 404;
+    res.status(status).json({ success: false, message });
   }
 };
 

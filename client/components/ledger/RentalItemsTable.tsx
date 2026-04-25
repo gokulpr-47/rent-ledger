@@ -12,10 +12,11 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
-import { CheckCircle, Pencil } from "lucide-react";
+import { CheckCircle, Pencil, Trash2 } from "lucide-react";
 import { RentalItem } from "@/lib/types";
 import ReturnItemModal from "./ReturnItemModal";
 import EditPriceModal from "./EditPriceModal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { format } from "date-fns";
 
 interface RentalItemsTableProps {
@@ -23,11 +24,12 @@ interface RentalItemsTableProps {
   readOnly?: boolean;
   onReturn?: (itemId: string, returnedTime: string) => Promise<void>;
   onEditPrice?: (itemId: string, price: number) => Promise<void>;
+  onDelete?: (itemId: string) => Promise<void>;
 }
 
 const formatDate = (d: string) => {
   try {
-    return format(new Date(d), "dd MMM yyyy HH:mm");
+    return format(new Date(d), "dd MMM yyyy hh:mm a");
   } catch {
     return d;
   }
@@ -44,26 +46,46 @@ export default function RentalItemsTable({
   readOnly = false,
   onReturn,
   onEditPrice,
+  onDelete,
 }: RentalItemsTableProps) {
   const [returnItem, setReturnItem] = useState<RentalItem | null>(null);
   const [editPriceItem, setEditPriceItem] = useState<RentalItem | null>(null);
+  const [deleteItem, setDeleteItem] = useState<RentalItem | null>(null);
   const [returnLoading, setReturnLoading] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleReturn = async (itemId: string, returnedTime: string) => {
     if (!onReturn) return;
     setReturnLoading(true);
-    await onReturn(itemId, returnedTime);
-    setReturnLoading(false);
-    setReturnItem(null);
+    try {
+      await onReturn(itemId, returnedTime);
+    } finally {
+      setReturnLoading(false);
+      setReturnItem(null);
+    }
   };
 
   const handleEditPrice = async (itemId: string, price: number) => {
     if (!onEditPrice) return;
     setPriceLoading(true);
-    await onEditPrice(itemId, price);
-    setPriceLoading(false);
-    setEditPriceItem(null);
+    try {
+      await onEditPrice(itemId, price);
+    } finally {
+      setPriceLoading(false);
+      setEditPriceItem(null);
+    }
+  };
+
+  const handleDelete = async (itemId: string) => {
+    if (!onDelete) return;
+    setDeleteLoading(true);
+    try {
+      await onDelete(itemId);
+    } finally {
+      setDeleteLoading(false);
+      setDeleteItem(null);
+    }
   };
 
   if (items.length === 0) {
@@ -136,7 +158,7 @@ export default function RentalItemsTable({
                   textTransform: "uppercase",
                 }}
               >
-                ₹/Day
+                Days
               </TableCell>
               <TableCell
                 sx={{
@@ -145,7 +167,7 @@ export default function RentalItemsTable({
                   textTransform: "uppercase",
                 }}
               >
-                Days
+                ₹/Day
               </TableCell>
               <TableCell
                 sx={{
@@ -171,7 +193,9 @@ export default function RentalItemsTable({
             </TableRow>
           </TableHead>
           <TableBody>
-            {items.map((item) => {
+            {[...items]
+              .sort((a, b) => new Date(a.takenTime).getTime() - new Date(b.takenTime).getTime())
+              .map((item) => {
               const isReturned = !!item.returnedTime;
               const days = calcDays(item.takenTime, item.returnedTime);
               return (
@@ -255,6 +279,16 @@ export default function RentalItemsTable({
                           </IconButton>
                         </Tooltip>
                       )}
+                      {isReturned && onDelete && (
+                        <Tooltip title="Delete Item">
+                          <IconButton
+                            size="small"
+                            onClick={() => setDeleteItem(item)}
+                          >
+                            <Trash2 size={14} color="#DC2626" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                       {onEditPrice && (
                         <Tooltip title="Edit Price">
                           <IconButton
@@ -287,6 +321,16 @@ export default function RentalItemsTable({
         onClose={() => setEditPriceItem(null)}
         onSubmit={handleEditPrice}
         loading={priceLoading}
+      />
+      <ConfirmDialog
+        open={!!deleteItem}
+        title="Delete Rental Item"
+        message={`Are you sure you want to delete "${deleteItem?.productName}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        confirmColor="error"
+        loading={deleteLoading}
+        onConfirm={() => deleteItem && handleDelete(deleteItem._id)}
+        onClose={() => setDeleteItem(null)}
       />
     </>
   );

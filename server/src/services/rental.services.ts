@@ -165,18 +165,71 @@ export const updateRentalItemPriceService = async (
   const item = await RentalItem.findById(rentalItemId);
   if (!item) throw new Error("Rental item not found");
 
+  // update the item's total directly
   item.total = newPrice;
-
-  // Optionally, recalc total if returnedTime exists
-  // if (item.returnedTime) {
-  //   const duration =
-  //     (item.returnedTime.getTime() - item.takenTime.getTime()) /
-  //     (1000 * 60 * 60 * 24);
-  //   item.total = item.pricePerDay * item.quantity * Math.ceil(duration);
-  // }
-
   await item.save();
+
+  // if this item is returned (or any other returned items exist), the
+  // parent rental's totals need to reflect the new price.  We only sum
+  // items that have a returnedTime since the open-rental summary only
+  // displays those.
+  const rentalItems = await RentalItem.find({
+    rental: item.rental,
+    returnedTime: { $ne: null },
+  });
+
+  const totalAmount = rentalItems.reduce((sum, ri) => sum + ri.total, 0);
+
+  const rental = await Rental.findById(item.rental);
+  if (rental) {
+    rental.totalAmount = totalAmount;
+    // apply any existing discount (normally 0 for open rentals)
+    rental.finalAmount = totalAmount - (rental.discount || 0);
+    await rental.save();
+  }
+
   return item;
+};
+
+export const deleteRentalItemService = async (rentalItemId: string) => {
+  console.log("entered");
+  if (!mongoose.Types.ObjectId.isValid(rentalItemId)) {
+    throw new Error("Invalid rentalItemId");
+  }
+
+  const item = await RentalItem.findById(rentalItemId);
+  if (!item) {
+    throw new Error("Rental item not found");
+  }
+
+  if (!item.returnedTime) {
+    throw new Error("Cannot delete item that has not been returned");
+  }
+
+  const rental = await Rental.findById(item.rental);
+  if (!rental) {
+    throw new Error("Parent rental not found");
+  }
+
+  console.log(`Deleting rental item ${rentalItemId} from rental ${rental._id}`);
+
+  // Allow deleting returned items even for closed rentals (keeping flow simple).
+  // This may leave final total/back references for closed rentals, so recompute accordingly.
+  await RentalItem.findByIdAndDelete(item._id);
+
+  // Recalculate totals for the rental (only returned items)
+  const returnedItems = await RentalItem.find({
+    rental: rental._id,
+    returnedTime: { $ne: null },
+  });
+
+  const totalAmount = returnedItems.reduce((sum, ri) => sum + ri.total, 0);
+
+  rental.totalAmount = totalAmount;
+  rental.finalAmount = totalAmount - (rental.discount || 0);
+  await rental.save();
+
+  return { rental, deletedItemId: rentalItemId };
 };
 
 export const getCustomerRentalItemsService = async (customerId: string) => {
@@ -195,11 +248,20 @@ export const getCustomerRentalItemsService = async (customerId: string) => {
     "product",
   );
 
+  // Recalculate totals from the item records (safeguard if rental document is stale)
+  const returnedItemsTotal = items
+    .filter((i) => i.returnedTime)
+    .reduce((sum, i) => sum + i.total, 0);
+  if (rental.totalAmount !== returnedItemsTotal) {
+    rental.totalAmount = returnedItemsTotal;
+    rental.finalAmount = returnedItemsTotal - (rental.discount || 0);
+    await rental.save();
+  }
+
   // Get all payments made for this rental
   const payments = await Payment.find({ rental: rental._id });
 
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-
   const remainingBalance = rental.finalAmount - totalPaid;
 
   return {
@@ -229,22 +291,62 @@ export const getAllCustomerRentalsService = async (customerId: string) => {
       "product",
     );
 
-    // Get payments
-    const payments = await Payment.find({ rental: rental._id });
+    // recalc totals from items
+    const returnedItemsTotal = items
+      .filter((i) => i.returnedTime)
+      .reduce((sum, i) => sum + i.total, 0);
 
-    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const remainingBalance = rental.finalAmount - totalPaid;
+    if (rental.totalAmount !== returnedItemsTotal) {
+      rental.totalAmount = returnedItemsTotal;
+      rental.finalAmount = returnedItemsTotal - (rental.discount || 0);
+      await rental.save();
+    }
 
     results.push({
       rental,
       items,
-      payments,
-      totalPaid,
-      remainingBalance,
     });
   }
 
   return results;
+};
+
+export const reopenRentalService = async (rentalId: string) => {
+  if (!mongoose.Types.ObjectId.isValid(rentalId)) {
+    throw new Error("Invalid rentalId");
+  }
+
+  const rental = await Rental.findById(rentalId);
+  if (!rental) {
+    throw new Error("Rental not found");
+  }
+
+  if (rental.status !== "CLOSED") {
+    throw new Error("Only closed rentals can be reopened");
+  }
+
+  const existingOpen = await Rental.findOne({
+    customer: rental.customer,
+    status: "OPEN",
+  });
+
+  if (existingOpen) {
+    throw new Error("Cannot reopen rental while another open rental exists for this customer");
+  }
+
+  // Re-open rental for edits/payments. Recompute totals from returned items
+  // and clear discount so remaining balance is accurate for the reopened state.
+  const returnedItems = await RentalItem.find({ rental: rental._id, returnedTime: { $ne: null } });
+  const returnTotal = returnedItems.reduce((sum, ri) => sum + ri.total, 0);
+
+  rental.totalAmount = returnTotal;
+  rental.discount = 0;
+  rental.finalAmount = returnTotal;
+  rental.status = "OPEN";
+
+  await rental.save();
+
+  return rental;
 };
 
 export const closeRentalService = async ({
@@ -288,109 +390,3 @@ export const closeRentalService = async ({
 
   return rental;
 };
-
-// export const getRentalDetailsService = async (rentalId: string) => {
-//   const rental = await Rental.findById(rentalId).populate("customer");
-
-//   if (!rental) {
-//     throw new Error("Rental not found");
-//   }
-
-//   const items = await RentalItem.find({ rental: rentalId }).populate("product");
-//   const payments = await Payment.find({ rental: rentalId });
-
-//   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-//   const remainingBalance = rental.finalAmount - totalPaid;
-
-//   return {
-//     rental,
-//     items,
-//     payments,
-//     totalPaid,
-//     remainingBalance,
-//     status: rental.status,
-//   };
-// };
-
-// export const getOpenRentalsService = async () => {
-//   const rentals = await Rental.aggregate([
-//     {
-//       $match: { status: "OPEN" },
-//     },
-//     {
-//       $lookup: {
-//         from: "payments",
-//         localField: "_id",
-//         foreignField: "rental",
-//         as: "payments",
-//       },
-//     },
-//     {
-//       $addFields: {
-//         totalPaid: { $sum: "$payments.amount" },
-//       },
-//     },
-//     {
-//       $addFields: {
-//         remainingBalance: {
-//           $subtract: ["$finalAmount", "$totalPaid"],
-//         },
-//       },
-//     },
-//     {
-//       $lookup: {
-//         from: "customers",
-//         localField: "customer",
-//         foreignField: "_id",
-//         as: "customer",
-//       },
-//     },
-//     {
-//       $unwind: "$customer",
-//     },
-//     {
-//       $sort: { createdAt: -1 },
-//     },
-//     {
-//       $project: {
-//         payments: 0,
-//       },
-//     },
-//   ]);
-
-//   return rentals;
-// };
-
-// export const getRentalsByCustomerService = async (customerId: string) => {
-//   const rentals = await Rental.find({ customer: customerId })
-//     .populate("customer")
-//     .sort({ createdAt: -1 });
-
-//   const result = [];
-//   let totalOutstanding = 0;
-
-//   for (const rental of rentals) {
-//     const payments = await Payment.find({ rental: rental._id });
-
-//     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-//     const remainingBalance = rental.finalAmount - totalPaid;
-
-//     if (remainingBalance > 0) {
-//       totalOutstanding += remainingBalance;
-//     }
-
-//     result.push({
-//       rentalId: rental._id,
-//       finalAmount: rental.finalAmount,
-//       totalPaid,
-//       remainingBalance,
-//       status: rental.status,
-//       createdAt: rental.createdAt,
-//     });
-//   }
-
-//   return {
-//     rentals: result,
-//     totalOutstanding,
-//   };
-// };

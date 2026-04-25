@@ -57,9 +57,18 @@ export const updateRentalItemPrice = async (
   return res.data.data;
 };
 
+export const deleteRentalItem = async (rentalItemId: string): Promise<void> => {
+  console.log("deleteRentalItem called with rentalItemId:", rentalItemId);
+  await api.delete(`/rentals/item/${rentalItemId}`);
+};
+
 export const closeRental = async (
   rentalId: string,
   discount?: number,
 ): Promise<void> => {
   await api.patch(`/rentals/${rentalId}/close`, { discount: discount || 0 });
+};
+
+export const reopenRental = async (rentalId: string): Promise<void> => {
+  await api.patch(`/rentals/${rentalId}/reopen`);
 };

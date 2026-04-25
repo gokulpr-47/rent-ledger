@@ -1,23 +1,28 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
-import Typography from '@mui/material/Typography';
-import Stack from '@mui/material/Stack';
-import Chip from '@mui/material/Chip';
-import Divider from '@mui/material/Divider';
-import { ChevronDown } from 'lucide-react';
-import { CustomerRentalData } from '@/lib/types';
-import RentalItemsTable from './RentalItemsTable';
-import { format } from 'date-fns';
+import { useState } from "react";
+import Accordion from "@mui/material/Accordion";
+import AccordionSummary from "@mui/material/AccordionSummary";
+import AccordionDetails from "@mui/material/AccordionDetails";
+import Typography from "@mui/material/Typography";
+import Stack from "@mui/material/Stack";
+import Chip from "@mui/material/Chip";
+import Divider from "@mui/material/Divider";
+import Button from "@mui/material/Button";
+import { ChevronDown } from "lucide-react";
+import { CustomerRentalData } from "@/lib/types";
+import RentalItemsTable from "./RentalItemsTable";
+import { format } from "date-fns";
 
 interface ClosedRentalsHistoryProps {
   rentals: CustomerRentalData[];
+  onReopen?: (rentalId: string) => Promise<void>;
 }
 
-export default function ClosedRentalsHistory({ rentals }: ClosedRentalsHistoryProps) {
+export default function ClosedRentalsHistory({
+  rentals,
+  onReopen,
+}: ClosedRentalsHistoryProps) {
   const [expanded, setExpanded] = useState<string | false>(false);
 
   if (rentals.length === 0) {
@@ -32,7 +37,7 @@ export default function ClosedRentalsHistory({ rentals }: ClosedRentalsHistoryPr
 
   return (
     <div className="space-y-2">
-      {rentals.map(({ rental, items, payments, totalPaid, remainingBalance }) => {
+      {rentals.map(({ rental, items, payments, remainingBalance }) => {
         const isOpen = expanded === rental._id;
         return (
           <Accordion
@@ -41,58 +46,90 @@ export default function ClosedRentalsHistory({ rentals }: ClosedRentalsHistoryPr
             onChange={(_, exp) => setExpanded(exp ? rental._id : false)}
             elevation={0}
             sx={{
-              border: '1px solid var(--color-border)',
-              borderRadius: '10px !important',
-              '&:before': { display: 'none' },
-              '&.Mui-expanded': { margin: 0 },
+              border: "1px solid var(--color-border)",
+              borderRadius: "10px !important",
+              "&:before": { display: "none" },
+              "&.Mui-expanded": { margin: 0 },
             }}
           >
             <AccordionSummary
               expandIcon={<ChevronDown size={16} />}
               sx={{ px: 3, py: 1 }}
             >
-              <Stack direction="row" alignItems="center" spacing={2} sx={{ width: '100%', pr: 2 }}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={2}
+                sx={{ width: "100%", pr: 2 }}
+              >
                 <div>
                   <Typography variant="body2" fontWeight={600}>
-                    {format(new Date(rental.createdAt), 'dd MMM yyyy')}
+                    {format(new Date(rental.createdAt), "dd MMM yyyy")}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {items.length} item{items.length !== 1 ? 's' : ''}
+                    {items.length} item{items.length !== 1 ? "s" : ""}
                   </Typography>
                 </div>
 
                 <Chip
                   label="CLOSED"
                   size="small"
-                  sx={{ fontSize: '0.65rem', backgroundColor: '#DCFCE7', color: '#166534', fontWeight: 700 }}
+                  sx={{
+                    fontSize: "0.65rem",
+                    backgroundColor: "#DCFCE7",
+                    color: "#166534",
+                    fontWeight: 700,
+                  }}
                 />
 
-                <Stack direction="row" spacing={3} sx={{ ml: 'auto' }}>
+                <Stack direction="row" spacing={3} sx={{ ml: "auto" }}>
                   <div>
-                    <Typography variant="caption" color="text.secondary">Total</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Total
+                    </Typography>
                     <Typography variant="body2" fontWeight={700}>
-                      ₹{rental.finalAmount.toLocaleString('en-IN')}
+                      {/* show pre-discount price */}₹
+                      {rental.totalAmount.toLocaleString("en-IN")}
                     </Typography>
                   </div>
                   {rental.discount > 0 && (
                     <div>
-                      <Typography variant="caption" color="text.secondary">Discount</Typography>
-                      <Typography variant="body2" fontWeight={600} color="warning.main">
-                        -₹{rental.discount.toLocaleString('en-IN')}
+                      <Typography variant="caption" color="text.secondary">
+                        Discount
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        fontWeight={600}
+                        color="warning.main"
+                      >
+                        -₹{rental.discount.toLocaleString("en-IN")}
                       </Typography>
                     </div>
                   )}
                   <div>
-                    <Typography variant="caption" color="text.secondary">Paid</Typography>
-                    <Typography variant="body2" fontWeight={700} color="success.main">
-                      ₹{totalPaid.toLocaleString('en-IN')}
+                    <Typography variant="caption" color="text.secondary">
+                      Paid
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      fontWeight={700}
+                      color="success.main"
+                    >
+                      {/* amount after discount */}₹
+                      {rental.finalAmount.toLocaleString("en-IN")}
                     </Typography>
                   </div>
                   {remainingBalance !== 0 && (
                     <div>
-                      <Typography variant="caption" color="text.secondary">Balance</Typography>
-                      <Typography variant="body2" fontWeight={700} color="error.main">
-                        ₹{remainingBalance.toLocaleString('en-IN')}
+                      <Typography variant="caption" color="text.secondary">
+                        Balance
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        fontWeight={700}
+                        color="error.main"
+                      >
+                        ₹{(remainingBalance ?? 0).toLocaleString("en-IN")}
                       </Typography>
                     </div>
                   )}
@@ -100,26 +137,55 @@ export default function ClosedRentalsHistory({ rentals }: ClosedRentalsHistoryPr
               </Stack>
             </AccordionSummary>
 
+            {onReopen && (
+              <div className="px-3 pb-2">
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => onReopen(rental._id)}
+                  fullWidth
+                >
+                  Reopen
+                </Button>
+              </div>
+            )}
+
             <AccordionDetails sx={{ px: 0, pt: 0, pb: 2 }}>
               <Divider />
               <div className="mt-2">
                 <RentalItemsTable items={items} readOnly />
               </div>
-              {payments.length > 0 && (
+              {payments && payments.length > 0 && (
                 <>
                   <Divider sx={{ my: 2 }} />
                   <div className="px-4">
-                    <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      fontWeight={600}
+                      sx={{
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                      }}
+                    >
                       Payment History
                     </Typography>
                     <Stack spacing={0.5} sx={{ mt: 1 }}>
                       {payments.map((p) => (
-                        <Stack key={p._id} direction="row" justifyContent="space-between">
+                        <Stack
+                          key={p._id}
+                          direction="row"
+                          justifyContent="space-between"
+                        >
                           <Typography variant="body2" color="text.secondary">
-                            {format(new Date(p.createdAt), 'dd MMM yyyy')}
+                            {format(new Date(p.createdAt), "dd MMM yyyy")}
                           </Typography>
-                          <Typography variant="body2" fontWeight={600} color="success.main">
-                            ₹{p.amount.toLocaleString('en-IN')}
+                          <Typography
+                            variant="body2"
+                            fontWeight={600}
+                            color="success.main"
+                          >
+                            ₹{p.amount.toLocaleString("en-IN")}
                           </Typography>
                         </Stack>
                       ))}

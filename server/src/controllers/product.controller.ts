@@ -61,7 +61,7 @@ export const getProducts = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
 
-    const limit = Math.min(parseInt(req.query.limit as string) || 10, 100);
+    const limit = Math.min(parseInt(req.query.limit as string) || 10, 1000);
 
     const search = (req.query.search as string) || "";
     const sort = (req.query.sort as string) || "-createdAt";

@@ -1,7 +1,7 @@
 export interface Customer {
   _id: string;
   name: string;
-  phone: string;
+  phone?: string;
   address?: string;
   createdAt: string;
   updatedAt: string;
@@ -35,7 +35,7 @@ export interface Rental {
   totalAmount: number;
   discount: number;
   finalAmount: number;
-  status: 'OPEN' | 'CLOSED';
+  status: "OPEN" | "CLOSED";
   createdAt: string;
   updatedAt: string;
 }
@@ -45,6 +45,9 @@ export interface Payment {
   rental: string;
   amount: number;
   createdAt: string;
+  itemIds?: string[];
+  isAdvance?: boolean;
+  notes?: string;
 }
 
 export interface CustomerRentalData {
@@ -60,13 +63,19 @@ export interface DashboardSummary {
   totalOutstanding: number;
   openRentalsCount: number;
   customersWithOutstanding: number;
+  runningCredits: CustomerRunningCredit[];
 }
 
 export interface Pagination {
-  total: number;
-  page: number;
+  total?: number;
+  totalDocuments?: number;
+  page?: number;
+  currentPage?: number;
   limit: number;
-  pages: number;
+  pages?: number;
+  totalPages?: number;
+  hasNextPage?: boolean;
+  hasPrevPage?: boolean;
 }
 
 export interface PaginatedResponse<T> {
@@ -83,6 +92,7 @@ export interface ApiResponse<T> {
 
 export interface CustomerRunningCredit {
   customerId: string;
+  customerName: string;
   totalOutstanding: number;
   openRentals: number;
 }

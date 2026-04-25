@@ -2,14 +2,14 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface ICustomer extends Document {
   name: string;
-  phone: string;
+  phone?: string;
   address?: string;
 }
 
 const customerSchema = new Schema<ICustomer>(
   {
     name: { type: String, required: true },
-    phone: { type: String, required: true, unique: true },
+    phone: { type: String, unique: true, sparse: true },
     address: { type: String },
   },
   { timestamps: true },

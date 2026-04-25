@@ -18,6 +18,7 @@ import Typography from "@mui/material/Typography";
 import InputAdornment from "@mui/material/InputAdornment";
 import { Plus, Trash2 } from "lucide-react";
 import { Product } from "@/lib/types";
+import TimePickerIn12Hour from "@/components/ui/TimePickerIn12Hour";
 
 const itemSchema = z.object({
   productId: z.string().min(1, "Select a product"),
@@ -42,10 +43,19 @@ interface AddItemsModalProps {
   loading?: boolean;
 }
 
+// return a datetime-local string representing the current local date/time
+const nowLocal = () => {
+  const d = new Date();
+  // convert to ISO string and adjust for timezone offset
+  const tzOffset = d.getTimezoneOffset() * 60000; // in ms
+  const localISO = new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+  return localISO;
+};
+
 const defaultItem = () => ({
   productId: "",
   quantity: 1,
-  takenTime: new Date().toISOString().slice(0, 16),
+  takenTime: nowLocal(),
   returnedTime: "",
   pricePerDay: undefined as number | undefined,
   notes: "",
@@ -64,6 +74,7 @@ export default function AddItemsModal({
     control,
     reset,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -140,6 +151,27 @@ export default function AddItemsModal({
                         getOptionLabel={(p) =>
                           `${p.name} — ₹${p.pricePerDay}/day`
                         }
+                        filterOptions={(options, { inputValue }) => {
+                          const input = inputValue.toLowerCase();
+                          if (!input) return options;
+
+                          const filtered = options.filter((option) =>
+                            option.name.toLowerCase().includes(input),
+                          );
+
+                          return filtered.sort((a, b) => {
+                            const aName = a.name.toLowerCase();
+                            const bName = b.name.toLowerCase();
+
+                            const aStartsWith = aName.startsWith(input);
+                            const bStartsWith = bName.startsWith(input);
+
+                            if (aStartsWith && !bStartsWith) return -1;
+                            if (!aStartsWith && bStartsWith) return 1;
+
+                            return aName.localeCompare(bName);
+                          });
+                        }}
                         onChange={(_, value) => {
                           field.onChange(value?._id ?? "");
                           // when product chosen, initialize price override to product price
@@ -163,6 +195,9 @@ export default function AddItemsModal({
                             inputRef={(el) => (productInputs.current[idx] = el)}
                           />
                         )}
+                        ListboxProps={{
+                          style: { maxHeight: "200px" },
+                        }}
                         fullWidth
                         // allow typing to filter
                         freeSolo={false}
@@ -186,23 +221,76 @@ export default function AddItemsModal({
                   />
 
                   <TextField
-                    label="Taken Date & Time"
-                    type="datetime-local"
+                    label="Taken Date"
+                    type="date"
                     size="small"
-                    {...register(`items.${idx}.takenTime`)}
+                    value={watch(`items.${idx}.takenTime`).split("T")[0]}
+                    onChange={(e) => {
+                      const date = e.target.value;
+                      const time =
+                        watch(`items.${idx}.takenTime`).split("T")[1] ||
+                        "00:00";
+                      setValue(`items.${idx}.takenTime`, `${date}T${time}`);
+                    }}
                     error={!!errors.items?.[idx]?.takenTime}
                     helperText={errors.items?.[idx]?.takenTime?.message}
                     InputLabelProps={{ shrink: true }}
                     fullWidth
                   />
 
+                  <TimePickerIn12Hour
+                    label="Taken Time (12-hour)"
+                    value={
+                      watch(`items.${idx}.takenTime`).split("T")[1] || "00:00"
+                    }
+                    onChange={(time) => {
+                      const date = watch(`items.${idx}.takenTime`).split(
+                        "T",
+                      )[0];
+                      setValue(`items.${idx}.takenTime`, `${date}T${time}`);
+                    }}
+                    error={!!errors.items?.[idx]?.takenTime}
+                    required
+                  />
+
                   <TextField
-                    label="Returned Date & Time (optional)"
-                    type="datetime-local"
+                    label="Returned Date (optional)"
+                    type="date"
                     size="small"
-                    {...register(`items.${idx}.returnedTime`)}
+                    value={
+                      watch(`items.${idx}.returnedTime`).split("T")[0] || ""
+                    }
+                    onChange={(e) => {
+                      const date = e.target.value;
+                      const time =
+                        watch(`items.${idx}.returnedTime`).split("T")[1] ||
+                        "00:00";
+                      setValue(
+                        `items.${idx}.returnedTime`,
+                        date ? `${date}T${time}` : "",
+                      );
+                    }}
                     InputLabelProps={{ shrink: true }}
                     fullWidth
+                  />
+
+                  <TimePickerIn12Hour
+                    label="Returned Time (12-hour, optional)"
+                    value={
+                      watch(`items.${idx}.returnedTime`).split("T")[1] ||
+                      "00:00"
+                    }
+                    onChange={(time) => {
+                      const date = watch(`items.${idx}.returnedTime`).split(
+                        "T",
+                      )[0];
+                      if (date) {
+                        setValue(
+                          `items.${idx}.returnedTime`,
+                          `${date}T${time}`,
+                        );
+                      }
+                    }}
                   />
 
                   <TextField
