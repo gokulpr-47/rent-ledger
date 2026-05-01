@@ -1,6 +1,7 @@
 import { Rental } from "../models/rental.model";
 import { Payment } from "../models/payment.model";
 import { Customer } from "../models/customer.model";
+import { RentalItem } from "../models/rentalItem.model";
 
 export const calculateDashboardSummary = async () => {
   const today = new Date();
@@ -107,4 +108,75 @@ export const getCustomerRunningCredits = async () => {
     totalOutstanding: data.totalOutstanding,
     openRentals: data.openRentals,
   }));
+};
+
+export const getOpenRentalsDetails = async () => {
+  // Get all OPEN rentals with customer info and items
+  const openRentals = await Rental.find({ status: "OPEN" }).lean();
+
+  if (openRentals.length === 0) return [];
+
+  const rentalIds = openRentals.map((r) => r._id);
+  const customerIds = openRentals.map((r) => r.customer);
+
+  // Get all payments for these rentals
+  const payments = await Payment.find({
+    rental: { $in: rentalIds },
+  }).lean();
+
+  // Get all customers
+  const customers = await Customer.find({
+    _id: { $in: customerIds },
+  }).lean();
+
+  // Get all items count for these rentals
+  const itemCounts = await RentalItem.aggregate([
+    {
+      $match: {
+        rental: { $in: rentalIds },
+      },
+    },
+    {
+      $group: {
+        _id: "$rental",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
+  // Create lookup maps
+  const paymentsMap: Record<string, number> = {};
+  payments.forEach((p) => {
+    const rentalId = p.rental.toString();
+    paymentsMap[rentalId] = (paymentsMap[rentalId] || 0) + p.amount;
+  });
+
+  const customerMap: Record<string, string> = {};
+  customers.forEach((c) => {
+    customerMap[c._id.toString()] = c.name;
+  });
+
+  const itemCountMap: Record<string, number> = {};
+  itemCounts.forEach((item) => {
+    itemCountMap[item._id.toString()] = item.count;
+  });
+
+  // Build response
+  return openRentals.map((rental) => {
+    const rentalId = rental._id.toString();
+    const customerId = rental.customer.toString();
+    const totalPaid = paymentsMap[rentalId] || 0;
+    const outstandingBalance = rental.finalAmount - totalPaid;
+    const itemCount = itemCountMap[rentalId] || 0;
+
+    return {
+      rentalId,
+      customerId,
+      customerName: customerMap[customerId] || "Unknown",
+      rentalDate: rental.createdAt,
+      totalAmount: rental.finalAmount,
+      outstandingBalance,
+      itemCount,
+    };
+  });
 };

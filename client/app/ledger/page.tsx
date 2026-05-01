@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import useSWR from "swr";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
@@ -13,7 +14,7 @@ import Button from "@mui/material/Button";
 import TopBar from "@/components/layout/TopBar";
 import OpenRentalPanel from "@/components/ledger/OpenRentalPanel";
 import ClosedRentalsHistory from "@/components/ledger/ClosedRentalsHistory";
-import { getCustomers } from "@/lib/api/customers";
+import { getCustomers, getCustomerById } from "@/lib/api/customers";
 import { getAllProducts } from "@/lib/api/products";
 import {
   getCustomerOpenRental,
@@ -27,6 +28,12 @@ import { addItemsToRental } from "@/lib/api/rentals";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 
 export default function LedgerPage() {
+  const searchParams = useSearchParams();
+  const customerId = searchParams.get("customerId");
+
+  console.log("Ledger page loaded with customerId=", customerId);
+
+  const router = useRouter();
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null,
   );
@@ -40,10 +47,44 @@ export default function LedgerPage() {
         page: 1,
         limit: 100,
         search: debouncedSearchCustomer,
-      }).then((res) => res.data),
+      }).then((res) => {
+        console.log("Fetched customers for ledger page", {
+          search: debouncedSearchCustomer,
+          customerId,
+          responseData: res.data,
+        });
+        return res.data;
+      }),
   );
 
   const customers: Customer[] = customersData || [];
+
+  const {
+    data: customerById,
+    isLoading: customerByIdLoading,
+    error: customerByIdError,
+  } = useSWR(
+    customerId ? ["customer", customerId] : null,
+    () => getCustomerById(customerId!),
+    { revalidateOnFocus: false },
+  );
+
+  // Effect to auto-select customer from URL parameter
+  useEffect(() => {
+    if (!customerId) return;
+
+    const customerFromList = customers.find((c) => c._id === customerId);
+    if (customerFromList) {
+      setSelectedCustomer(customerFromList);
+      return;
+    }
+
+    if (customerById) {
+      setSelectedCustomer(customerById);
+    } else if (customerByIdError) {
+      setPageError(`Customer with ID ${customerId} not found.`);
+    }
+  }, [customerId, customers, customerById, customerByIdError]);
 
   const { data: products = [] } = useSWR("all-products", getAllProducts);
 
@@ -53,7 +94,15 @@ export default function LedgerPage() {
     mutate: mutateOpen,
   } = useSWR(
     selectedCustomer ? ["open-rental", selectedCustomer._id] : null,
-    () => getCustomerOpenRental(selectedCustomer!._id),
+    () =>
+      getCustomerOpenRental(selectedCustomer!._id).then((res) => {
+        console.log(
+          "Fetched open rental for customer",
+          selectedCustomer?._id,
+          res,
+        );
+        return res;
+      }),
     { revalidateOnFocus: true },
   );
 
@@ -63,7 +112,15 @@ export default function LedgerPage() {
     mutate: mutateHistory,
   } = useSWR(
     selectedCustomer ? ["all-rentals", selectedCustomer._id] : null,
-    () => getAllCustomerRentals(selectedCustomer!._id),
+    () =>
+      getAllCustomerRentals(selectedCustomer!._id).then((res) => {
+        console.log(
+          "Fetched all rentals for customer",
+          selectedCustomer?._id,
+          res,
+        );
+        return res;
+      }),
     { revalidateOnFocus: true },
   );
 
@@ -134,7 +191,14 @@ export default function LedgerPage() {
               c.phone ? `${c.name} — ${c.phone}` : c.name
             }
             value={selectedCustomer}
-            onChange={(_, val) => setSelectedCustomer(val)}
+            onChange={(_, val) => {
+              setSelectedCustomer(val);
+              if (val) {
+                router.replace(`/ledger?customerId=${val._id}`);
+              } else {
+                router.replace(`/ledger`);
+              }
+            }}
             onInputChange={(_, value) => {
               setSearchCustomer(value);
             }}
@@ -160,7 +224,7 @@ export default function LedgerPage() {
           />
 
           {/* Empty state */}
-          {!selectedCustomer && (
+          {!selectedCustomer && !customerId && (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <div
                 className="w-16 h-16 rounded-2xl flex items-center justify-center"
@@ -176,6 +240,15 @@ export default function LedgerPage() {
               </Typography>
             </div>
           )}
+
+          {/* Loading when customerId is present but customer not selected yet */}
+          {customerId &&
+            !selectedCustomer &&
+            (customersLoading || customerByIdLoading) && (
+              <div className="flex items-center justify-center py-12">
+                <CircularProgress />
+              </div>
+            )}
 
           {/* Loading */}
           {selectedCustomer && isLoading && (
@@ -238,7 +311,10 @@ export default function LedgerPage() {
                         {closedRentals.length !== 1 ? "s" : ""}
                       </Typography>
                     </Typography>
-                    <ClosedRentalsHistory rentals={closedRentals} onReopen={handleReopenRental} />
+                    <ClosedRentalsHistory
+                      rentals={closedRentals}
+                      onReopen={handleReopenRental}
+                    />
                   </div>
                 </>
               )}

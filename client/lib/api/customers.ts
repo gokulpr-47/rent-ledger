@@ -1,5 +1,5 @@
-import api from '../axios';
-import { Customer, PaginatedResponse, CustomerRunningCredit } from '../types';
+import api from "../axios";
+import { Customer, PaginatedResponse, CustomerRunningCredit } from "../types";
 
 export interface GetCustomersParams {
   page?: number;
@@ -9,22 +9,22 @@ export interface GetCustomersParams {
 }
 
 export const getCustomers = async (
-  params: GetCustomersParams = {}
+  params: GetCustomersParams = {},
 ): Promise<PaginatedResponse<Customer>> => {
-  const res = await api.get('/customers', { params });
+  const res = await api.get("/customers", { params });
   return res.data;
 };
 
 export const createCustomer = async (
-  data: Omit<Customer, '_id' | 'createdAt' | 'updatedAt'>
+  data: Omit<Customer, "_id" | "createdAt" | "updatedAt">,
 ): Promise<Customer> => {
-  const res = await api.post('/customers', data);
+  const res = await api.post("/customers", data);
   return res.data.data;
 };
 
 export const updateCustomer = async (
   id: string,
-  data: Partial<Omit<Customer, '_id' | 'createdAt' | 'updatedAt'>>
+  data: Partial<Omit<Customer, "_id" | "createdAt" | "updatedAt">>,
 ): Promise<Customer> => {
   const res = await api.put(`/customers/${id}`, data);
   return res.data.data;
@@ -35,13 +35,20 @@ export const deleteCustomer = async (id: string): Promise<void> => {
 };
 
 export const getCustomerRunningCredit = async (
-  customerId: string
+  customerId: string,
 ): Promise<CustomerRunningCredit> => {
   const res = await api.get(`/customers/${customerId}/running-credit`);
   return res.data.data;
 };
 
 export const getAllCustomers = async (): Promise<Customer[]> => {
-  const res = await api.get('/customers', { params: { limit: 100 } });
+  const res = await api.get("/customers", { params: { limit: 100 } });
+  return res.data.data;
+};
+
+export const getCustomerById = async (
+  customerId: string,
+): Promise<Customer> => {
+  const res = await api.get(`/customers/${customerId}`);
   return res.data.data;
 };

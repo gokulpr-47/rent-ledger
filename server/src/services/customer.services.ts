@@ -105,6 +105,19 @@ export const deleteCustomerService = async (id: string) => {
   return customer;
 };
 
+export const getCustomerByIdService = async (id: string) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new Error("Invalid customer ID");
+  }
+
+  const customer = await Customer.findById(id);
+  if (!customer) {
+    throw new Error("Customer not found");
+  }
+
+  return customer;
+};
+
 export const getCustomerRunningCreditService = async (customerId: string) => {
   // Validate ObjectId
   if (!mongoose.Types.ObjectId.isValid(customerId)) {

@@ -6,6 +6,7 @@ import {
   updateCustomerService,
   deleteCustomerService,
   getCustomerRunningCreditService,
+  getCustomerByIdService,
 } from "../services/customer.services";
 
 export const createCustomer = async (req: Request, res: Response) => {
@@ -64,6 +65,31 @@ export const deleteCustomer = async (req: Request, res: Response) => {
     const message = error.message || "Failed to delete customer";
     const status = message.includes("rental records") ? 400 : 404;
     res.status(status).json({ success: false, message });
+  }
+};
+
+export const getCustomerById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id as string)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid customer ID",
+      });
+    }
+
+    const customer = await getCustomerByIdService(id as string);
+
+    res.json({
+      success: true,
+      data: customer,
+    });
+  } catch (error: any) {
+    res.status(404).json({
+      success: false,
+      message: error.message || "Customer not found",
+    });
   }
 };
 

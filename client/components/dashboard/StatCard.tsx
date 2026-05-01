@@ -12,6 +12,7 @@ interface StatCardProps {
   icon: ReactNode;
   iconBg: string;
   subtitle?: string;
+  onClick?: () => void;
 }
 
 export default function StatCard({
@@ -20,15 +21,18 @@ export default function StatCard({
   icon,
   iconBg,
   subtitle,
+  onClick,
 }: StatCardProps) {
   return (
     <Card
       elevation={0}
+      onClick={onClick}
       sx={{
         border: '1px solid var(--color-border)',
         borderRadius: '12px',
         '&:hover': { boxShadow: '0 4px 12px rgba(0,0,0,0.08)' },
         transition: 'box-shadow 150ms ease',
+        ...(onClick && { cursor: 'pointer' }),
       }}
     >
       <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>

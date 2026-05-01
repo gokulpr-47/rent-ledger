@@ -2,8 +2,9 @@
 
 import { Suspense, useState } from "react";
 import useSWR from "swr";
-import { getDashboardSummary } from "@/lib/api/dashboard";
+import { getDashboardSummary, getOpenRentals } from "@/lib/api/dashboard";
 import StatCard from "@/components/dashboard/StatCard";
+import OpenRentalsModal from "@/components/dashboard/OpenRentalsModal";
 import TopBar from "@/components/layout/TopBar";
 import { IndianRupee, AlertCircle, FileText, Users, ArrowUpDown } from "lucide-react";
 import Alert from "@mui/material/Alert";
@@ -27,7 +28,7 @@ type SortField = 'name' | 'amount';
 type SortOrder = 'asc' | 'desc';
 
 // Separate component for stat cards
-function StatCardsSection() {
+function StatCardsSection({ onOpenRentalsClick }: { onOpenRentalsClick: () => void }) {
   const { data, error } = useSWR("/", getDashboardSummary, {
     refreshInterval: 30000,
   });
@@ -66,6 +67,7 @@ function StatCardsSection() {
         icon={<FileText size={20} color="#1E40AF" />}
         iconBg="#DBEAFE"
         subtitle="Currently active rentals"
+        onClick={onOpenRentalsClick}
       />
       <StatCard
         title="Customers with Dues"
@@ -221,6 +223,21 @@ function OutstandingCreditsSection() {
 }
 
 export default function DashboardPage() {
+  const [openRentalsModalOpen, setOpenRentalsModalOpen] = useState(false);
+  const { data: rentalsData, isLoading: rentalsLoading } = useSWR(
+    openRentalsModalOpen ? "open-rentals" : null,
+    getOpenRentals,
+    { revalidateOnFocus: false }
+  );
+
+  const handleOpenRentalsClick = () => {
+    setOpenRentalsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setOpenRentalsModalOpen(false);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <TopBar title="Dashboard" />
@@ -228,7 +245,7 @@ export default function DashboardPage() {
       <div className="flex-1 p-6">
         {/* Stat Cards with Suspense */}
         <Suspense fallback={<StatCardsSkeleton />}>
-          <StatCardsSection />
+          <StatCardsSection onOpenRentalsClick={handleOpenRentalsClick} />
         </Suspense>
 
         {/* Outstanding Credits Table with Suspense */}
@@ -236,6 +253,14 @@ export default function DashboardPage() {
           <OutstandingCreditsSection />
         </Suspense>
       </div>
+
+      {/* Open Rentals Modal */}
+      <OpenRentalsModal
+        open={openRentalsModalOpen}
+        onClose={handleCloseModal}
+        rentals={rentalsData || []}
+        loading={rentalsLoading}
+      />
     </div>
   );
 }
