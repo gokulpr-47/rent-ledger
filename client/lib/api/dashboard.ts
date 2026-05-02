@@ -16,7 +16,12 @@ export const getDashboardSummary = async (): Promise<DashboardSummary> => {
   return res.data.data;
 };
 
-export const getOpenRentals = async (): Promise<OpenRental[]> => {
-  const res = await api.get("/dashboard/open-rentals");
+export const getOpenRentals = async (
+  sortField: string = "outstandingBalance",
+  sortOrder: string = "desc",
+): Promise<OpenRental[]> => {
+  const res = await api.get("/dashboard/open-rentals", {
+    params: { sortField, sortOrder },
+  });
   return res.data.data;
 };

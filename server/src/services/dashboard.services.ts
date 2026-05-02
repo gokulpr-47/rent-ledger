@@ -110,7 +110,10 @@ export const getCustomerRunningCredits = async () => {
   }));
 };
 
-export const getOpenRentalsDetails = async () => {
+export const getOpenRentalsDetails = async (
+  sortField: string = "outstandingBalance",
+  sortOrder: string = "desc",
+) => {
   // Get all OPEN rentals with customer info and items
   const openRentals = await Rental.find({ status: "OPEN" }).lean();
 
@@ -162,7 +165,7 @@ export const getOpenRentalsDetails = async () => {
   });
 
   // Build response
-  return openRentals.map((rental) => {
+  const openRentalsDetails = openRentals.map((rental) => {
     const rentalId = rental._id.toString();
     const customerId = rental.customer.toString();
     const totalPaid = paymentsMap[rentalId] || 0;
@@ -178,5 +181,40 @@ export const getOpenRentalsDetails = async () => {
       outstandingBalance,
       itemCount,
     };
+  });
+
+  const validSortFields = new Set([
+    "customerName",
+    "itemCount",
+    "totalAmount",
+    "outstandingBalance",
+    "rentalDate",
+  ]);
+  const normalizedSortField = validSortFields.has(sortField)
+    ? sortField
+    : "outstandingBalance";
+  const normalizedSortOrder = sortOrder === "asc" ? "asc" : "desc";
+
+  return openRentalsDetails.sort((a, b) => {
+    let aValue: string | number = a[normalizedSortField as keyof typeof a] as
+      | string
+      | number;
+    let bValue: string | number = b[normalizedSortField as keyof typeof b] as
+      | string
+      | number;
+
+    if (normalizedSortField === "customerName") {
+      aValue = String(aValue).toLowerCase();
+      bValue = String(bValue).toLowerCase();
+    }
+
+    if (normalizedSortField === "rentalDate") {
+      aValue = new Date(aValue).getTime();
+      bValue = new Date(bValue).getTime();
+    }
+
+    if (aValue < bValue) return normalizedSortOrder === "asc" ? -1 : 1;
+    if (aValue > bValue) return normalizedSortOrder === "asc" ? 1 : -1;
+    return 0;
   });
 };

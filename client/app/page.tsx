@@ -6,7 +6,13 @@ import { getDashboardSummary, getOpenRentals } from "@/lib/api/dashboard";
 import StatCard from "@/components/dashboard/StatCard";
 import OpenRentalsModal from "@/components/dashboard/OpenRentalsModal";
 import TopBar from "@/components/layout/TopBar";
-import { IndianRupee, AlertCircle, FileText, Users, ArrowUpDown } from "lucide-react";
+import {
+  IndianRupee,
+  AlertCircle,
+  FileText,
+  Users,
+  ArrowUpDown,
+} from "lucide-react";
 import Alert from "@mui/material/Alert";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -19,16 +25,30 @@ import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
 import Button from "@mui/material/Button";
 import ButtonGroup from "@mui/material/ButtonGroup";
-import { StatCardsSkeleton, TableSkeleton } from "@/components/dashboard/SkeletonCards";
+import {
+  StatCardsSkeleton,
+  TableSkeleton,
+} from "@/components/dashboard/SkeletonCards";
 
 const formatCurrency = (value: number) =>
   `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
-type SortField = 'name' | 'amount';
-type SortOrder = 'asc' | 'desc';
+type SortField = "name" | "amount";
+type SortOrder = "asc" | "desc";
+
+type OpenRentalsSortField =
+  | "customerName"
+  | "itemCount"
+  | "totalAmount"
+  | "outstandingBalance"
+  | "rentalDate";
 
 // Separate component for stat cards
-function StatCardsSection({ onOpenRentalsClick }: { onOpenRentalsClick: () => void }) {
+function StatCardsSection({
+  onOpenRentalsClick,
+}: {
+  onOpenRentalsClick: () => void;
+}) {
   const { data, error } = useSWR("/", getDashboardSummary, {
     refreshInterval: 30000,
   });
@@ -82,8 +102,8 @@ function StatCardsSection({ onOpenRentalsClick }: { onOpenRentalsClick: () => vo
 
 // Separate component for outstanding credits table
 function OutstandingCreditsSection() {
-  const [sortField, setSortField] = useState<SortField>('amount');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [sortField, setSortField] = useState<SortField>("amount");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   const { data, error } = useSWR("/", getDashboardSummary, {
     refreshInterval: 30000,
@@ -103,29 +123,31 @@ function OutstandingCreditsSection() {
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
-      setSortOrder('asc');
+      setSortOrder("asc");
     }
   };
 
-  const sortedCredits = data?.runningCredits ? [...data.runningCredits].sort((a, b) => {
-    let aValue: string | number;
-    let bValue: string | number;
+  const sortedCredits = data?.runningCredits
+    ? [...data.runningCredits].sort((a, b) => {
+        let aValue: string | number;
+        let bValue: string | number;
 
-    if (sortField === 'name') {
-      aValue = a.customerName.toLowerCase();
-      bValue = b.customerName.toLowerCase();
-    } else {
-      aValue = a.totalOutstanding;
-      bValue = b.totalOutstanding;
-    }
+        if (sortField === "name") {
+          aValue = a.customerName.toLowerCase();
+          bValue = b.customerName.toLowerCase();
+        } else {
+          aValue = a.totalOutstanding;
+          bValue = b.totalOutstanding;
+        }
 
-    if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
-    return 0;
-  }) : [];
+        if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
+        return 0;
+      })
+    : [];
 
   if (!data?.runningCredits || data.runningCredits.length === 0) {
     return (
@@ -151,18 +173,18 @@ function OutstandingCreditsSection() {
 
         <ButtonGroup size="small" variant="outlined">
           <Button
-            onClick={() => handleSort('name')}
+            onClick={() => handleSort("name")}
             startIcon={<ArrowUpDown size={14} />}
-            variant={sortField === 'name' ? 'contained' : 'outlined'}
+            variant={sortField === "name" ? "contained" : "outlined"}
           >
-            Name {sortField === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+            Name {sortField === "name" && (sortOrder === "asc" ? "↑" : "↓")}
           </Button>
           <Button
-            onClick={() => handleSort('amount')}
+            onClick={() => handleSort("amount")}
             startIcon={<IndianRupee size={14} />}
-            variant={sortField === 'amount' ? 'contained' : 'outlined'}
+            variant={sortField === "amount" ? "contained" : "outlined"}
           >
-            Amount {sortField === 'amount' && (sortOrder === 'asc' ? '↑' : '↓')}
+            Amount {sortField === "amount" && (sortOrder === "asc" ? "↑" : "↓")}
           </Button>
         </ButtonGroup>
       </div>
@@ -173,8 +195,8 @@ function OutstandingCreditsSection() {
         sx={{
           border: "1px solid var(--color-border)",
           borderRadius: 2,
-          maxHeight: '60vh',
-          overflow: 'auto'
+          maxHeight: "60vh",
+          overflow: "auto",
         }}
       >
         <Table size="small" stickyHeader>
@@ -183,7 +205,10 @@ function OutstandingCreditsSection() {
               <TableCell sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
                 Customer Name
               </TableCell>
-              <TableCell sx={{ fontWeight: 600, fontSize: "0.875rem" }} align="right">
+              <TableCell
+                sx={{ fontWeight: 600, fontSize: "0.875rem" }}
+                align="right"
+              >
                 Outstanding Amount
               </TableCell>
             </TableRow>
@@ -209,7 +234,11 @@ function OutstandingCreditsSection() {
                   </div>
                 </TableCell>
                 <TableCell align="right">
-                  <Typography variant="body2" fontWeight={600} color="error.main">
+                  <Typography
+                    variant="body2"
+                    fontWeight={600}
+                    color="error.main"
+                  >
                     ₹{credit.totalOutstanding.toLocaleString("en-IN")}
                   </Typography>
                 </TableCell>
@@ -224,14 +253,30 @@ function OutstandingCreditsSection() {
 
 export default function DashboardPage() {
   const [openRentalsModalOpen, setOpenRentalsModalOpen] = useState(false);
+  const [openRentalsSortField, setOpenRentalsSortField] =
+    useState<OpenRentalsSortField>("outstandingBalance");
+  const [openRentalsSortOrder, setOpenRentalsSortOrder] =
+    useState<SortOrder>("desc");
+
   const { data: rentalsData, isLoading: rentalsLoading } = useSWR(
-    openRentalsModalOpen ? "open-rentals" : null,
+    openRentalsModalOpen
+      ? ["open-rentals", openRentalsSortField, openRentalsSortOrder]
+      : null,
     getOpenRentals,
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false },
   );
 
   const handleOpenRentalsClick = () => {
     setOpenRentalsModalOpen(true);
+  };
+
+  const handleOpenRentalsSort = (field: OpenRentalsSortField) => {
+    if (openRentalsSortField === field) {
+      setOpenRentalsSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setOpenRentalsSortField(field);
+      setOpenRentalsSortOrder("asc");
+    }
   };
 
   const handleCloseModal = () => {
@@ -260,6 +305,9 @@ export default function DashboardPage() {
         onClose={handleCloseModal}
         rentals={rentalsData || []}
         loading={rentalsLoading}
+        sortField={openRentalsSortField}
+        sortOrder={openRentalsSortOrder}
+        onSort={handleOpenRentalsSort}
       />
     </div>
   );

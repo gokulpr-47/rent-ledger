@@ -27,7 +27,9 @@ export const getDashboardSummary = async (req: Request, res: Response) => {
 
 export const getOpenRentals = async (req: Request, res: Response) => {
   try {
-    const openRentals = await getOpenRentalsDetails();
+    const sortField = String(req.query.sortField || "outstandingBalance");
+    const sortOrder = String(req.query.sortOrder || "desc");
+    const openRentals = await getOpenRentalsDetails(sortField, sortOrder);
 
     res.status(200).json({
       success: true,

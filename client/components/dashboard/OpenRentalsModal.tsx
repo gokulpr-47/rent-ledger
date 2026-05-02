@@ -10,17 +10,30 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
+import TableSortLabel from "@mui/material/TableSortLabel";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import Box from "@mui/material/Box";
 import { OpenRental } from "@/lib/api/dashboard";
 
+type OpenRentalsSortField =
+  | "customerName"
+  | "itemCount"
+  | "totalAmount"
+  | "outstandingBalance"
+  | "rentalDate";
+
+type SortOrder = "asc" | "desc";
+
 interface OpenRentalsModalProps {
   open: boolean;
   onClose: () => void;
   rentals: OpenRental[];
   loading?: boolean;
+  sortField: OpenRentalsSortField;
+  sortOrder: SortOrder;
+  onSort: (field: OpenRentalsSortField) => void;
 }
 
 export default function OpenRentalsModal({
@@ -28,6 +41,9 @@ export default function OpenRentalsModal({
   onClose,
   rentals,
   loading = false,
+  sortField,
+  sortOrder,
+  onSort,
 }: OpenRentalsModalProps) {
   const router = useRouter();
 
@@ -35,6 +51,31 @@ export default function OpenRentalsModal({
     router.push(`/ledger?customerId=${customerId}`);
     onClose();
   };
+
+  const sortedRentals = [...rentals].sort((a, b) => {
+    let aValue: string | number | Date = a[sortField];
+    let bValue: string | number | Date = b[sortField];
+
+    if (sortField === "customerName") {
+      aValue = String(aValue).toLowerCase();
+      bValue = String(bValue).toLowerCase();
+    }
+
+    if (sortField === "rentalDate") {
+      aValue = new Date(aValue);
+      bValue = new Date(bValue);
+    }
+
+    if (typeof aValue === "string" && typeof bValue === "string") {
+      return sortOrder === "asc"
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    }
+
+    if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
+    if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
+    return 0;
+  });
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -63,27 +104,72 @@ export default function OpenRentalsModal({
               <TableHead>
                 <TableRow sx={{ backgroundColor: "grey.50" }}>
                   <TableCell sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
-                    Customer Name
+                    <TableSortLabel
+                      active={sortField === "customerName"}
+                      direction={
+                        sortField === "customerName" ? sortOrder : "asc"
+                      }
+                      onClick={() => onSort("customerName")}
+                    >
+                      Customer Name
+                    </TableSortLabel>
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 600, fontSize: "0.875rem" }} align="center">
-                    Items
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 600, fontSize: "0.875rem" }} align="right">
-                    Total Amount
+                  <TableCell
+                    sx={{ fontWeight: 600, fontSize: "0.875rem" }}
+                    align="center"
+                  >
+                    <TableSortLabel
+                      active={sortField === "itemCount"}
+                      direction={sortField === "itemCount" ? sortOrder : "asc"}
+                      onClick={() => onSort("itemCount")}
+                    >
+                      Items
+                    </TableSortLabel>
                   </TableCell>
                   <TableCell
                     sx={{ fontWeight: 600, fontSize: "0.875rem" }}
                     align="right"
                   >
-                    Outstanding
+                    <TableSortLabel
+                      active={sortField === "totalAmount"}
+                      direction={
+                        sortField === "totalAmount" ? sortOrder : "asc"
+                      }
+                      onClick={() => onSort("totalAmount")}
+                    >
+                      Total Amount
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell
+                    sx={{ fontWeight: 600, fontSize: "0.875rem" }}
+                    align="right"
+                    sortDirection={
+                      sortField === "outstandingBalance" ? sortOrder : false
+                    }
+                  >
+                    <TableSortLabel
+                      active={sortField === "outstandingBalance"}
+                      direction={
+                        sortField === "outstandingBalance" ? sortOrder : "desc"
+                      }
+                      onClick={() => onSort("outstandingBalance")}
+                    >
+                      Outstanding
+                    </TableSortLabel>
                   </TableCell>
                   <TableCell sx={{ fontWeight: 600, fontSize: "0.875rem" }}>
-                    Rental Date
+                    <TableSortLabel
+                      active={sortField === "rentalDate"}
+                      direction={sortField === "rentalDate" ? sortOrder : "asc"}
+                      onClick={() => onSort("rentalDate")}
+                    >
+                      Rental Date
+                    </TableSortLabel>
                   </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rentals.map((rental) => (
+                {sortedRentals.map((rental) => (
                   <TableRow
                     key={rental.rentalId}
                     hover
@@ -96,7 +182,9 @@ export default function OpenRentalsModal({
                       </Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <Typography variant="body2">{rental.itemCount}</Typography>
+                      <Typography variant="body2">
+                        {rental.itemCount}
+                      </Typography>
                     </TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" fontWeight={500}>
@@ -115,7 +203,7 @@ export default function OpenRentalsModal({
                       >
                         ₹
                         {Math.abs(rental.outstandingBalance).toLocaleString(
-                          "en-IN"
+                          "en-IN",
                         )}
                       </Typography>
                     </TableCell>
@@ -127,7 +215,7 @@ export default function OpenRentalsModal({
                             day: "2-digit",
                             month: "short",
                             year: "numeric",
-                          }
+                          },
                         )}
                       </Typography>
                     </TableCell>
